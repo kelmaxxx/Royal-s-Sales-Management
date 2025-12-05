@@ -57,92 +57,111 @@ const SalesPage = () => {
     };
   }, []);
 
-  // Initial sales data
+  // Initial sales data (stored with product ID for future reference)
   const initialSales = [
     {
       id: 1,
       date: 'Jan 30, 2024 10:45 AM',
+      productId: 1,
       product: 'Laptop Pro 15"',
       quantity: 2,
-      total: '₱90,000.00',
-      vat: '₱9,642.86',
+      total: 90000,
+      vat: 9642.86,
       recordedBy: 'Admin',
+      timestamp: new Date('2024-01-30T10:45:00'),
     },
     {
       id: 2,
       date: 'Jan 30, 2024 09:30 AM',
+      productId: 2,
       product: 'Wireless Mouse',
       quantity: 5,
-      total: '₱4,250.00',
-      vat: '₱455.36',
+      total: 4250,
+      vat: 455.36,
       recordedBy: 'Staff',
+      timestamp: new Date('2024-01-30T09:30:00'),
     },
     {
       id: 3,
       date: 'Jan 29, 2024 04:20 PM',
+      productId: 3,
       product: 'USB-C Cable',
       quantity: 10,
-      total: '₱3,500.00',
-      vat: '₱375.00',
+      total: 3500,
+      vat: 375,
       recordedBy: 'Admin',
+      timestamp: new Date('2024-01-29T16:20:00'),
     },
     {
       id: 4,
       date: 'Jan 29, 2024 02:15 PM',
+      productId: 4,
       product: 'Monitor 27"',
       quantity: 1,
-      total: '₱12,500.00',
-      vat: '₱1,339.29',
+      total: 12500,
+      vat: 1339.29,
       recordedBy: 'Staff',
+      timestamp: new Date('2024-01-29T14:15:00'),
     },
     {
       id: 5,
       date: 'Jan 29, 2024 11:00 AM',
+      productId: 5,
       product: 'Mechanical Keyboard',
       quantity: 3,
-      total: '₱10,500.00',
-      vat: '₱1,125.00',
+      total: 10500,
+      vat: 1125,
       recordedBy: 'Admin',
+      timestamp: new Date('2024-01-29T11:00:00'),
     },
     {
       id: 6,
       date: 'Jan 28, 2024 03:45 PM',
+      productId: 6,
       product: 'Webcam HD',
       quantity: 4,
-      total: '₱11,200.00',
-      vat: '₱1,200.00',
+      total: 11200,
+      vat: 1200,
       recordedBy: 'Staff',
+      timestamp: new Date('2024-01-28T15:45:00'),
     },
     {
       id: 7,
       date: 'Jan 28, 2024 01:30 PM',
+      productId: 7,
       product: 'Desk Lamp',
       quantity: 2,
-      total: '₱2,400.00',
-      vat: '₱257.14',
+      total: 2400,
+      vat: 257.14,
       recordedBy: 'Admin',
+      timestamp: new Date('2024-01-28T13:30:00'),
     },
     {
       id: 8,
       date: 'Jan 28, 2024 10:15 AM',
+      productId: 8,
       product: 'Office Chair',
       quantity: 1,
-      total: '₱8,500.00',
-      vat: '₱910.71',
+      total: 8500,
+      vat: 910.71,
       recordedBy: 'Staff',
+      timestamp: new Date('2024-01-28T10:15:00'),
     },
     {
       id: 9,
       date: 'Jan 27, 2024 05:00 PM',
+      productId: 9,
       product: 'Headphones Pro',
       quantity: 6,
-      total: '₱25,200.00',
-      vat: '₱2,700.00',
+      total: 25200,
+      vat: 2700,
       recordedBy: 'Admin',
+      timestamp: new Date('2024-01-27T17:00:00'),
     },
     {
       id: 10,
       date: 'Jan 27, 2024 02:20 PM',
+      productId: 1,
       product: 'Laptop Pro 15"',
       quantity: 1,
       total: 45000,
@@ -183,8 +202,18 @@ const SalesPage = () => {
     return 'older';
   };
 
+  // Get current product name by ID (in case product was renamed)
+  const getCurrentProductName = (sale) => {
+    if (sale.productId) {
+      const currentProduct = availableProducts.find(p => p.id === sale.productId);
+      return currentProduct ? currentProduct.name : sale.product; // Fallback to stored name if product deleted
+    }
+    return sale.product; // Old sales without productId
+  };
+
   const filteredSales = sales.filter((sale) => {
-    const matchesSearch = sale.product.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const currentProductName = getCurrentProductName(sale);
+    const matchesSearch = currentProductName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          sale.recordedBy.toLowerCase().includes(searchTerm.toLowerCase());
     
     if (dateFilter === 'all') return matchesSearch;
@@ -238,7 +267,8 @@ const SalesPage = () => {
         minute: '2-digit',
         hour12: true
       }),
-      product: product.name,
+      productId: product.id, // Store product ID for future reference
+      product: product.name, // Store current product name for display
       quantity: quantity,
       total: total,
       vat: vat,
@@ -347,7 +377,12 @@ const SalesPage = () => {
                 filteredSales.map((sale) => (
                   <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 text-sm text-gray-600">{sale.date}</td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-800">{sale.product}</td>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-800">
+                      {getCurrentProductName(sale)}
+                      {sale.productId && getCurrentProductName(sale) !== sale.product && (
+                        <span className="ml-2 text-xs text-gray-400 italic">(renamed)</span>
+                      )}
+                    </td>
                     <td className="px-6 py-4 text-sm text-gray-600">{sale.quantity}</td>
                     <td className="px-6 py-4 text-sm font-bold text-gray-800">{formatPrice(sale.total)}</td>
                     <td className="px-6 py-4 text-sm text-gray-600">{formatPrice(sale.vat)}</td>

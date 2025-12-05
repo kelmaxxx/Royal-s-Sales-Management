@@ -51,13 +51,136 @@ const ReportsPage = () => {
     { id: 'revenue', label: 'Revenue Report' },
   ];
 
-  // Load data from localStorage
+  // Load data from localStorage and calculate real metrics
   useEffect(() => {
     const loadedProducts = JSON.parse(localStorage.getItem('products') || '[]');
     const loadedSales = JSON.parse(localStorage.getItem('sales') || '[]');
     setProducts(loadedProducts);
     setSales(loadedSales);
   }, []);
+
+  // Calculate real sales metrics
+  const calculateSalesMetrics = () => {
+    if (sales.length === 0) {
+      return {
+        totalRevenue: 7912000,
+        vatAmount: 847714,
+        totalTransactions: 1847,
+        averageTransaction: 4285,
+      };
+    }
+
+    const totalRevenue = sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+    const vatAmount = sales.reduce((sum, sale) => sum + (sale.vat || 0), 0);
+    const totalTransactions = sales.length;
+    const averageTransaction = totalTransactions > 0 ? Math.round(totalRevenue / totalTransactions) : 0;
+
+    return {
+      totalRevenue,
+      vatAmount,
+      totalTransactions,
+      averageTransaction,
+    };
+  };
+
+  // Calculate top selling products from sales data
+  const calculateTopProducts = () => {
+    if (sales.length === 0) {
+      return topProducts; // Return mock data if no sales
+    }
+
+    // Aggregate sales by product
+    const productSales = {};
+    
+    sales.forEach(sale => {
+      const productName = sale.product;
+      if (!productSales[productName]) {
+        productSales[productName] = {
+          name: productName,
+          totalRevenue: 0,
+          totalUnits: 0,
+        };
+      }
+      productSales[productName].totalRevenue += sale.total || 0;
+      productSales[productName].totalUnits += sale.quantity || 0;
+    });
+
+    // Convert to array and sort by revenue
+    const sortedProducts = Object.values(productSales)
+      .sort((a, b) => b.totalRevenue - a.totalRevenue)
+      .slice(0, 5); // Top 5
+
+    // Get product categories from products data
+    const getCategory = (productName) => {
+      const product = products.find(p => p.name === productName);
+      return product ? product.category : 'General';
+    };
+
+    // Format as needed for display
+    return sortedProducts.map((product, index) => ({
+      rank: index + 1,
+      name: product.name,
+      category: getCategory(product.name),
+      revenue: `₱${product.totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`,
+      units: product.totalUnits,
+    }));
+  };
+
+  // Calculate monthly sales data
+  const calculateMonthlySales = () => {
+    if (sales.length === 0) {
+      return monthlySalesData; // Return mock data if no sales
+    }
+
+    // Group sales by month
+    const monthlyData = {};
+    
+    sales.forEach(sale => {
+      if (sale.timestamp) {
+        const date = new Date(sale.timestamp);
+        const monthKey = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+        
+        if (!monthlyData[monthKey]) {
+          monthlyData[monthKey] = 0;
+        }
+        monthlyData[monthKey] += sale.total || 0;
+      }
+    });
+
+    // Convert to array format
+    return Object.entries(monthlyData)
+      .map(([month, sales]) => ({ month, sales }))
+      .sort((a, b) => new Date(a.month) - new Date(b.month));
+  };
+
+  // Calculate inventory metrics
+  const calculateInventoryMetrics = () => {
+    if (products.length === 0) {
+      return {
+        totalProducts: 342,
+        totalStock: 8547,
+        lowStockItems: 23,
+        outOfStockItems: 7,
+      };
+    }
+
+    const totalProducts = products.length;
+    const totalStock = products.reduce((sum, p) => sum + (p.stock || 0), 0);
+    const lowStockItems = products.filter(p => p.stock > 0 && p.stock <= 10).length;
+    const outOfStockItems = products.filter(p => p.stock === 0).length;
+
+    return {
+      totalProducts,
+      totalStock,
+      lowStockItems,
+      outOfStockItems,
+    };
+  };
+
+  const salesMetrics = calculateSalesMetrics();
+  const realTopProducts = calculateTopProducts();
+  const realMonthlySales = calculateMonthlySales();
+  const inventoryMetrics = calculateInventoryMetrics();
 
   const getRankColor = (rank) => {
     const colors = ['bg-accent-gold', 'bg-gray-400', 'bg-amber-700', 'bg-blue-500', 'bg-purple-500'];
@@ -473,29 +596,35 @@ const ReportsPage = () => {
             <div className="bg-white rounded-xl p-6 shadow-md">
               <div className="flex items-center justify-between mb-4">
                 <DollarSign className="w-8 h-8 text-accent-gold" />
-                <span className="text-emerald-600 text-sm font-semibold">+15.3%</span>
+                {sales.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
               </div>
               <h3 className="text-sm font-medium text-gray-600 mb-1">Total Revenue</h3>
-              <p className="text-3xl font-bold text-gray-800">₱7,912,000</p>
-              <p className="text-xs text-gray-500 mt-1">Inc. VAT: ₱847,714</p>
+              <p className="text-3xl font-bold text-gray-800">
+                ₱{salesMetrics.totalRevenue.toLocaleString('en-PH')}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Inc. VAT: ₱{Math.round(salesMetrics.vatAmount).toLocaleString('en-PH')}
+              </p>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-md">
               <div className="flex items-center justify-between mb-4">
                 <ShoppingCart className="w-8 h-8 text-blue-600" />
-                <span className="text-emerald-600 text-sm font-semibold">+8.7%</span>
+                {sales.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
               </div>
               <h3 className="text-sm font-medium text-gray-600 mb-1">Total Transactions</h3>
-              <p className="text-3xl font-bold text-gray-800">1,847</p>
+              <p className="text-3xl font-bold text-gray-800">{salesMetrics.totalTransactions.toLocaleString()}</p>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-md">
               <div className="flex items-center justify-between mb-4">
                 <TrendingUp className="w-8 h-8 text-emerald-600" />
-                <span className="text-emerald-600 text-sm font-semibold">+5.2%</span>
+                {sales.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
               </div>
               <h3 className="text-sm font-medium text-gray-600 mb-1">Avg Transaction</h3>
-              <p className="text-3xl font-bold text-gray-800">₱4,285</p>
+              <p className="text-3xl font-bold text-gray-800">
+                ₱{salesMetrics.averageTransaction.toLocaleString('en-PH')}
+              </p>
               <p className="text-xs text-gray-500 mt-1">Inc. 12% VAT</p>
             </div>
           </div>
@@ -503,11 +632,18 @@ const ReportsPage = () => {
           {/* Monthly Sales Trend */}
           <div className="bg-white rounded-xl p-6 shadow-md">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-gray-800">Monthly Sales Trend</h2>
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Monthly Sales Trend</h2>
+                {sales.length > 0 && (
+                  <p className="text-sm text-blue-600 font-medium mt-1">
+                    ⚡ Real data from {sales.length} transactions
+                  </p>
+                )}
+              </div>
               <span className="text-sm text-gray-500">All amounts include 12% VAT</span>
             </div>
             <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={monthlySalesData}>
+              <LineChart data={realMonthlySales.length > 0 ? realMonthlySales : monthlySalesData}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                 <XAxis dataKey="month" stroke="#6b7280" />
                 <YAxis stroke="#6b7280" />
@@ -537,27 +673,39 @@ const ReportsPage = () => {
           {/* Inventory Metrics */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             <div className="bg-white rounded-xl p-6 shadow-md">
-              <Package className="w-8 h-8 text-blue-600 mb-4" />
+              <div className="flex items-center justify-between mb-4">
+                <Package className="w-8 h-8 text-blue-600" />
+                {products.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
+              </div>
               <h3 className="text-sm font-medium text-gray-600 mb-1">Total Products</h3>
-              <p className="text-3xl font-bold text-gray-800">342</p>
+              <p className="text-3xl font-bold text-gray-800">{inventoryMetrics.totalProducts}</p>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-md">
-              <Package className="w-8 h-8 text-emerald-600 mb-4" />
+              <div className="flex items-center justify-between mb-4">
+                <Package className="w-8 h-8 text-emerald-600" />
+                {products.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
+              </div>
               <h3 className="text-sm font-medium text-gray-600 mb-1">Total Stock</h3>
-              <p className="text-3xl font-bold text-gray-800">8,547</p>
+              <p className="text-3xl font-bold text-gray-800">{inventoryMetrics.totalStock.toLocaleString()}</p>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-md">
-              <AlertTriangle className="w-8 h-8 text-yellow-600 mb-4" />
+              <div className="flex items-center justify-between mb-4">
+                <AlertTriangle className="w-8 h-8 text-yellow-600" />
+                {products.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
+              </div>
               <h3 className="text-sm font-medium text-gray-600 mb-1">Low Stock</h3>
-              <p className="text-3xl font-bold text-gray-800">23</p>
+              <p className="text-3xl font-bold text-gray-800">{inventoryMetrics.lowStockItems}</p>
             </div>
 
             <div className="bg-white rounded-xl p-6 shadow-md">
-              <XCircle className="w-8 h-8 text-red-600 mb-4" />
+              <div className="flex items-center justify-between mb-4">
+                <XCircle className="w-8 h-8 text-red-600" />
+                {products.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
+              </div>
               <h3 className="text-sm font-medium text-gray-600 mb-1">Out of Stock</h3>
-              <p className="text-3xl font-bold text-gray-800">7</p>
+              <p className="text-3xl font-bold text-gray-800">{inventoryMetrics.outOfStockItems}</p>
             </div>
           </div>
 
@@ -661,12 +809,26 @@ const ReportsPage = () => {
         <div>
           <div className="bg-white rounded-xl shadow-md overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-              <h2 className="text-xl font-bold text-gray-800">Top Selling Products by Revenue</h2>
+              <div>
+                <h2 className="text-xl font-bold text-gray-800">Top Selling Products by Revenue</h2>
+                {sales.length > 0 && realTopProducts.length > 0 && (
+                  <p className="text-sm text-blue-600 font-medium mt-1">
+                    ⚡ Real data from {sales.length} sales transactions
+                  </p>
+                )}
+              </div>
               <span className="text-sm text-gray-500">All amounts include 12% VAT</span>
             </div>
             <div className="p-6">
-              <div className="space-y-4">
-                {topProducts.map((product) => (
+              {realTopProducts.length === 0 ? (
+                <div className="text-center py-12">
+                  <Package className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                  <p className="text-gray-500 text-lg font-medium">No sales data available yet</p>
+                  <p className="text-gray-400 text-sm mt-2">Start recording sales to see top products here</p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                {realTopProducts.map((product) => (
                   <div
                     key={product.rank}
                     className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
@@ -690,6 +852,7 @@ const ReportsPage = () => {
                   </div>
                 ))}
               </div>
+              )}
             </div>
           </div>
         </div>
