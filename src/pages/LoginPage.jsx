@@ -23,8 +23,8 @@ const LoginPage = ({ onLogin }) => {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Left Side - Abstract Wave Design */}
-      <div className="w-1/2 bg-gradient-to-br from-primary-dark via-slate-800 to-slate-900 relative overflow-hidden flex items-center justify-center">
+      {/* Left Side - Abstract Wave Design (55%) */}
+      <div className="w-[55%] bg-gradient-to-br from-primary-dark via-slate-800 to-slate-900 relative overflow-hidden flex items-center justify-center">
         {/* Animated Abstract Waves */}
         <div className="absolute inset-0">
           {/* Wave 1 */}
@@ -113,8 +113,8 @@ const LoginPage = ({ onLogin }) => {
         <div className="absolute bottom-0 right-0 w-40 h-40 border-b-4 border-r-4 border-white opacity-20 rounded-br-3xl"></div>
       </div>
 
-      {/* Right Side - Login Form */}
-      <div className="w-1/2 bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      {/* Right Side - Login Form (45%) */}
+      <div className="w-[45%] bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="w-full max-w-md px-8">
           <div className="bg-white rounded-2xl shadow-2xl p-10 border border-gray-100">
             {/* Header */}
