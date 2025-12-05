@@ -1,21 +1,30 @@
-import React, { useState } from 'react';
-import { Plus, Search, Edit, Trash2, User, Shield, Mail, Phone } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Search, Edit, Trash2, User, Shield, Mail, Phone, X } from 'lucide-react';
 
 const UsersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
-  const [showAddModal, setShowAddModal] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    role: 'Staff',
+    password: '',
+    status: 'Active',
+  });
 
-  // Mock users data
-  const users = [
+  // Initial users data
+  const initialUsers = [
     {
       id: 1,
-      name: 'John Admin',
+      name: 'Kelmaxxx',
       email: 'admin@royalsales.com',
       phone: '+1 (555) 123-4567',
       role: 'Admin',
       status: 'Active',
       joinDate: 'Jan 15, 2023',
-      avatar: 'JA',
+      avatar: 'HK',
       avatarColor: 'bg-blue-600',
     },
     {
@@ -64,6 +73,148 @@ const UsersPage = () => {
     },
   ];
 
+  // Users data with localStorage persistence
+  const [users, setUsers] = useState(() => {
+    const savedUsers = localStorage.getItem('users');
+    return savedUsers ? JSON.parse(savedUsers) : initialUsers;
+  });
+
+  // Persist users to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('users', JSON.stringify(users));
+  }, [users]);
+
+  // Generate avatar initials
+  const getInitials = (name) => {
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  // Generate random avatar color
+  const getAvatarColor = () => {
+    const colors = [
+      'bg-blue-600',
+      'bg-emerald-600',
+      'bg-purple-600',
+      'bg-pink-600',
+      'bg-indigo-600',
+      'bg-red-600',
+      'bg-yellow-600',
+      'bg-teal-600',
+    ];
+    return colors[Math.floor(Math.random() * colors.length)];
+  };
+
+  const handleOpenModal = (user = null) => {
+    if (user) {
+      // Prevent editing admin users
+      if (user.role === 'Admin') {
+        alert('Cannot edit Admin users. Only Staff accounts can be modified.');
+        return;
+      }
+      setEditingUser(user);
+      setFormData({
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        password: '',
+        status: user.status,
+      });
+    } else {
+      setEditingUser(null);
+      setFormData({
+        name: '',
+        email: '',
+        phone: '',
+        role: 'Staff', // Always Staff for new users
+        password: '',
+        status: 'Active',
+      });
+    }
+    setShowModal(true);
+  };
+
+  const handleCloseModal = () => {
+    setShowModal(false);
+    setEditingUser(null);
+    setFormData({
+      name: '',
+      email: '',
+      phone: '',
+      role: 'Staff',
+      password: '',
+      status: 'Active',
+    });
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    
+    if (editingUser) {
+      // Update existing user
+      setUsers(users.map(u => 
+        u.id === editingUser.id 
+          ? {
+              ...u,
+              name: formData.name,
+              email: formData.email,
+              phone: formData.phone,
+              role: formData.role,
+              status: formData.status,
+              avatar: getInitials(formData.name),
+            }
+          : u
+      ));
+    } else {
+      // Add new user
+      const newUser = {
+        id: Math.max(...users.map(u => u.id), 0) + 1,
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone,
+        role: formData.role,
+        status: formData.status,
+        joinDate: new Date().toLocaleDateString('en-US', { 
+          month: 'short', 
+          day: 'numeric', 
+          year: 'numeric' 
+        }),
+        avatar: getInitials(formData.name),
+        avatarColor: getAvatarColor(),
+      };
+      setUsers([...users, newUser]);
+    }
+    
+    handleCloseModal();
+  };
+
+  const handleDelete = (userId) => {
+    const userToDelete = users.find(u => u.id === userId);
+    
+    // Prevent deleting admin users
+    if (userToDelete && userToDelete.role === 'Admin') {
+      alert('Cannot delete Admin users. Only Staff accounts can be removed.');
+      return;
+    }
+    
+    if (window.confirm('Are you sure you want to delete this user?')) {
+      setUsers(users.filter(u => u.id !== userId));
+    }
+  };
+
+  const handleToggleStatus = (userId) => {
+    setUsers(users.map(u => 
+      u.id === userId 
+        ? { ...u, status: u.status === 'Active' ? 'Inactive' : 'Active' }
+        : u
+    ));
+  };
+
   const filteredUsers = users.filter(
     (user) =>
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -79,11 +230,11 @@ const UsersPage = () => {
           <p className="text-gray-600">Manage staff and administrator accounts</p>
         </div>
         <button 
-          onClick={() => setShowAddModal(true)}
+          onClick={() => handleOpenModal()}
           className="flex items-center space-x-2 bg-primary-dark text-white px-6 py-3 rounded-lg font-semibold hover:bg-slate-700 transition-all shadow-md hover:shadow-lg"
         >
           <Plus className="w-5 h-5" />
-          <span>Add User</span>
+          <span>Add Staff User</span>
         </button>
       </div>
 
@@ -206,10 +357,28 @@ const UsersPage = () => {
                   <td className="px-6 py-4 text-sm text-gray-600">{user.joinDate}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-2">
-                      <button className="p-2 bg-primary-dark text-white rounded-lg hover:bg-slate-700 transition-all">
+                      <button 
+                        onClick={() => handleOpenModal(user)}
+                        className={`p-2 rounded-lg transition-all ${
+                          user.role === 'Admin'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-primary-dark text-white hover:bg-slate-700'
+                        }`}
+                        title={user.role === 'Admin' ? 'Cannot edit Admin users' : 'Edit user'}
+                        disabled={user.role === 'Admin'}
+                      >
                         <Edit className="w-4 h-4" />
                       </button>
-                      <button className="p-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-all">
+                      <button 
+                        onClick={() => handleDelete(user.id)}
+                        className={`p-2 rounded-lg transition-all ${
+                          user.role === 'Admin'
+                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                            : 'bg-red-50 text-red-600 hover:bg-red-100'
+                        }`}
+                        title={user.role === 'Admin' ? 'Cannot delete Admin users' : 'Delete user'}
+                        disabled={user.role === 'Admin'}
+                      >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -221,85 +390,142 @@ const UsersPage = () => {
         </div>
       </div>
 
-      {/* Add User Modal */}
-      {showAddModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-8 max-w-md w-full mx-4 shadow-2xl">
-            <h2 className="text-2xl font-bold text-gray-800 mb-6">Add New User</h2>
-            
-            <form className="space-y-4">
+      {/* Add/Edit User Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-md">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Full Name
-                </label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none"
-                  placeholder="Enter full name"
-                />
+                <h2 className="text-2xl font-bold text-gray-800">
+                  {editingUser ? 'Edit Staff User' : 'Add New Staff User'}
+                </h2>
+                <p className="text-sm text-gray-500 mt-1">
+                  {editingUser ? 'Modify staff member details' : 'Create a new staff account'}
+                </p>
+              </div>
+              <button
+                onClick={handleCloseModal}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSubmit} className="p-6">
+              <div className="space-y-4">
+                {/* Full Name */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none transition"
+                    placeholder="Enter full name"
+                  />
+                </div>
+
+                {/* Email Address */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    required
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none transition"
+                    placeholder="Enter email"
+                  />
+                </div>
+
+                {/* Phone Number */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Phone Number *
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none transition"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+
+                {/* Role - Fixed to Staff only */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    Role *
+                  </label>
+                  <input
+                    type="text"
+                    value="Staff"
+                    disabled
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Only Staff accounts can be created. Admin role is reserved for system administrators.
+                  </p>
+                </div>
+
+                {/* Status */}
+                {editingUser && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Status *
+                    </label>
+                    <select
+                      required
+                      value={formData.status}
+                      onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none transition"
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                )}
+
+                {/* Password */}
+                {!editingUser && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Password *
+                    </label>
+                    <input
+                      type="password"
+                      required={!editingUser}
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none transition"
+                      placeholder="Enter password"
+                    />
+                  </div>
+                )}
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none"
-                  placeholder="Enter email"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none"
-                  placeholder="Enter phone number"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Role
-                </label>
-                <select className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none">
-                  <option value="Staff">Staff</option>
-                  <option value="Admin">Admin</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Password
-                </label>
-                <input
-                  type="password"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none"
-                  placeholder="Enter password"
-                />
-              </div>
-
-              <div className="flex space-x-3 pt-4">
+              {/* Modal Actions */}
+              <div className="flex items-center space-x-3 mt-6">
                 <button
                   type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="flex-1 px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:bg-gray-50 transition-all"
+                  onClick={handleCloseModal}
+                  className="flex-1 px-4 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-all"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    setShowAddModal(false);
-                    // Handle add user logic here
-                  }}
-                  className="flex-1 px-6 py-3 bg-primary-dark text-white rounded-lg font-semibold hover:bg-slate-700 transition-all"
+                  className="flex-1 px-4 py-3 bg-primary-dark text-white rounded-lg font-semibold hover:bg-slate-700 transition-all"
                 >
-                  Add User
+                  {editingUser ? 'Update User' : 'Add User'}
                 </button>
               </div>
             </form>

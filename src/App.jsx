@@ -1,4 +1,4 @@
-import React, { useState, createContext, useContext } from 'react';
+import React, { useState, createContext, useContext, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
@@ -20,27 +20,48 @@ export const useUser = () => {
 };
 
 function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [currentUser, setCurrentUser] = useState(null);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    // Initialize from localStorage
+    const savedAuth = localStorage.getItem('isAuthenticated');
+    return savedAuth === 'true';
+  });
+  
+  const [currentUser, setCurrentUser] = useState(() => {
+    // Initialize from localStorage
+    const savedUser = localStorage.getItem('currentUser');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
+
+  // Persist authentication state to localStorage
+  useEffect(() => {
+    localStorage.setItem('isAuthenticated', isAuthenticated);
+    if (currentUser) {
+      localStorage.setItem('currentUser', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('currentUser');
+    }
+  }, [isAuthenticated, currentUser]);
 
   const handleLogin = (username, password) => {
     // Mock authentication - check credentials
     if (username.toLowerCase() === 'admin' && password) {
-      setCurrentUser({
+      const user = {
         username: 'admin',
-        name: 'John Admin',
+        name: 'Kelmaxxx',
         role: 'Admin',
         email: 'admin@royalsales.com',
-      });
+      };
+      setCurrentUser(user);
       setIsAuthenticated(true);
       return true;
     } else if (username.toLowerCase().startsWith('staff') && password) {
-      setCurrentUser({
+      const user = {
         username: username.toLowerCase(),
         name: username.charAt(0).toUpperCase() + username.slice(1),
         role: 'Staff',
         email: `${username.toLowerCase()}@royalsales.com`,
-      });
+      };
+      setCurrentUser(user);
       setIsAuthenticated(true);
       return true;
     }
@@ -50,6 +71,8 @@ function App() {
   const handleLogout = () => {
     setIsAuthenticated(false);
     setCurrentUser(null);
+    localStorage.removeItem('isAuthenticated');
+    localStorage.removeItem('currentUser');
   };
 
   return (
