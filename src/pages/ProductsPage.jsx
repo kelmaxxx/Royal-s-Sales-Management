@@ -100,7 +100,7 @@ const ProductsPage = () => {
     localStorage.setItem('products', JSON.stringify(products));
   }, [products]);
 
-  const categories = ['All', 'Electronics', 'Accessories', 'Office', 'Furniture', 'Audio'];
+  const categories = ['All', 'Electronics', 'Accessories', 'Office', 'Furniture', 'Audio','Other'];
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||

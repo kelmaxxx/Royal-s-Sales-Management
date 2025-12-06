@@ -25,6 +25,7 @@ const ReportsPage = () => {
     { name: 'Accessories', value: 98, color: '#f59e0b' },
     { name: 'Office', value: 56, color: '#10b981' },
     { name: 'Furniture', value: 43, color: '#8b5cf6' },
+    { name: 'Other', value: 43, color: '#f65c8aff' },
   ];
 
   const inventoryStatusData = [
