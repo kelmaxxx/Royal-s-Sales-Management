@@ -1,12 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Download, DollarSign, ShoppingCart, TrendingUp, Package, AlertTriangle, XCircle, FileText, Table, FileJson, ChevronDown } from 'lucide-react';
-import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { Download, DollarSign, ShoppingCart, TrendingUp, Package, AlertTriangle, XCircle, FileText, Table, FileJson, ChevronDown, Calendar, BarChart3 } from 'lucide-react';
+import { LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, BarChart, Bar } from 'recharts';
 
 const ReportsPage = () => {
   const [activeTab, setActiveTab] = useState('sales');
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [products, setProducts] = useState([]);
   const [sales, setSales] = useState([]);
+  const [summaryDateRange, setSummaryDateRange] = useState('today');
+  const [customStartDate, setCustomStartDate] = useState('');
+  const [customEndDate, setCustomEndDate] = useState('');
+  const [revenueStartDate, setRevenueStartDate] = useState('');
+  const [revenueEndDate, setRevenueEndDate] = useState('');
 
   // Mock data for Sales Report
   const monthlySalesData = [
@@ -50,6 +55,7 @@ const ReportsPage = () => {
     { id: 'sales', label: 'Sales Report' },
     { id: 'inventory', label: 'Inventory Report' },
     { id: 'revenue', label: 'Revenue Report' },
+    { id: 'summary', label: 'Daily/Monthly Summary' },
   ];
 
   // Load data from localStorage and calculate real metrics
@@ -183,6 +189,166 @@ const ReportsPage = () => {
   const realMonthlySales = calculateMonthlySales();
   const inventoryMetrics = calculateInventoryMetrics();
 
+  // Calculate revenue within date range
+  const calculateRevenueInRange = () => {
+    if (!revenueStartDate || !revenueEndDate || sales.length === 0) {
+      return {
+        totalRevenue: 0,
+        vatAmount: 0,
+        transactions: 0,
+        dateRange: 'No date range selected'
+      };
+    }
+
+    const startDate = new Date(revenueStartDate);
+    const endDate = new Date(revenueEndDate);
+    endDate.setHours(23, 59, 59, 999); // Include the entire end date
+
+    const filteredSales = sales.filter(sale => {
+      if (!sale.timestamp) return false;
+      const saleDate = new Date(sale.timestamp);
+      return saleDate >= startDate && saleDate <= endDate;
+    });
+
+    const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+    const vatAmount = filteredSales.reduce((sum, sale) => sum + (sale.vat || 0), 0);
+
+    return {
+      totalRevenue,
+      vatAmount,
+      transactions: filteredSales.length,
+      dateRange: `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`
+    };
+  };
+
+  // Calculate summary report data based on date range
+  const calculateSummaryData = () => {
+    if (sales.length === 0) {
+      return {
+        totalSales: 0,
+        totalRevenue: 0,
+        totalVAT: 0,
+        totalItems: 0,
+        topProduct: 'N/A',
+        dateRangeText: 'No data available',
+        dailyBreakdown: [],
+        hourlyBreakdown: []
+      };
+    }
+
+    let filteredSales = [];
+    let dateRangeText = '';
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    if (summaryDateRange === 'today') {
+      filteredSales = sales.filter(sale => {
+        if (!sale.timestamp) return false;
+        const saleDate = new Date(sale.timestamp);
+        saleDate.setHours(0, 0, 0, 0);
+        return saleDate.getTime() === today.getTime();
+      });
+      dateRangeText = 'Today - ' + today.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' });
+    } else if (summaryDateRange === 'thisMonth') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      filteredSales = sales.filter(sale => {
+        if (!sale.timestamp) return false;
+        const saleDate = new Date(sale.timestamp);
+        return saleDate >= firstDay && saleDate <= lastDay;
+      });
+      dateRangeText = today.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } else if (summaryDateRange === 'lastMonth') {
+      const firstDay = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const lastDay = new Date(today.getFullYear(), today.getMonth(), 0);
+      filteredSales = sales.filter(sale => {
+        if (!sale.timestamp) return false;
+        const saleDate = new Date(sale.timestamp);
+        return saleDate >= firstDay && saleDate <= lastDay;
+      });
+      dateRangeText = firstDay.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    } else if (summaryDateRange === 'custom' && customStartDate && customEndDate) {
+      const startDate = new Date(customStartDate);
+      const endDate = new Date(customEndDate);
+      endDate.setHours(23, 59, 59, 999);
+      filteredSales = sales.filter(sale => {
+        if (!sale.timestamp) return false;
+        const saleDate = new Date(sale.timestamp);
+        return saleDate >= startDate && saleDate <= endDate;
+      });
+      dateRangeText = `${startDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - ${endDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`;
+    }
+
+    const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+    const totalVAT = filteredSales.reduce((sum, sale) => sum + (sale.vat || 0), 0);
+    const totalItems = filteredSales.reduce((sum, sale) => sum + (sale.quantity || 0), 0);
+
+    // Find top product
+    const productCount = {};
+    filteredSales.forEach(sale => {
+      const productName = sale.product;
+      if (!productCount[productName]) {
+        productCount[productName] = { count: 0, revenue: 0 };
+      }
+      productCount[productName].count += sale.quantity || 0;
+      productCount[productName].revenue += sale.total || 0;
+    });
+
+    const topProduct = Object.keys(productCount).length > 0
+      ? Object.entries(productCount).sort((a, b) => b[1].revenue - a[1].revenue)[0][0]
+      : 'N/A';
+
+    // Daily breakdown for monthly view
+    const dailyBreakdown = {};
+    filteredSales.forEach(sale => {
+      if (!sale.timestamp) return;
+      const date = new Date(sale.timestamp);
+      const dayKey = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      if (!dailyBreakdown[dayKey]) {
+        dailyBreakdown[dayKey] = 0;
+      }
+      dailyBreakdown[dayKey] += sale.total || 0;
+    });
+
+    const dailyData = Object.entries(dailyBreakdown).map(([day, revenue]) => ({
+      day,
+      revenue
+    })).slice(-30); // Last 30 days max
+
+    // Hourly breakdown for daily view
+    const hourlyBreakdown = {};
+    if (summaryDateRange === 'today') {
+      for (let i = 0; i < 24; i++) {
+        hourlyBreakdown[i] = 0;
+      }
+      filteredSales.forEach(sale => {
+        if (!sale.timestamp) return;
+        const date = new Date(sale.timestamp);
+        const hour = date.getHours();
+        hourlyBreakdown[hour] += sale.total || 0;
+      });
+    }
+
+    const hourlyData = Object.entries(hourlyBreakdown).map(([hour, revenue]) => ({
+      hour: `${hour}:00`,
+      revenue
+    }));
+
+    return {
+      totalSales: filteredSales.length,
+      totalRevenue,
+      totalVAT,
+      totalItems,
+      topProduct,
+      dateRangeText,
+      dailyBreakdown: dailyData,
+      hourlyBreakdown: hourlyData
+    };
+  };
+
+  const revenueData = calculateRevenueInRange();
+  const summaryData = calculateSummaryData();
+
   const getRankColor = (rank) => {
     const colors = ['bg-accent-gold', 'bg-gray-400', 'bg-amber-700', 'bg-blue-500', 'bg-purple-500'];
     return colors[rank - 1] || 'bg-gray-500';
@@ -266,11 +432,41 @@ const ReportsPage = () => {
     } else if (activeTab === 'revenue') {
       // Revenue Report CSV
       csvContent = `Revenue Report - Generated on ${timestamp}\n\n`;
+      if (revenueStartDate && revenueEndDate) {
+        csvContent += `Date Range: ${revenueData.dateRange}\n`;
+        csvContent += `Total Revenue,₱${revenueData.totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n`;
+        csvContent += `VAT Amount,₱${revenueData.vatAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n`;
+        csvContent += `Transactions,${revenueData.transactions}\n\n`;
+      }
       csvContent += `Top Selling Products by Revenue\n`;
       csvContent += `Rank,Product,Category,Revenue,Units Sold\n`;
       topProducts.forEach(product => {
         csvContent += `${product.rank},"${product.name}",${product.category},${product.revenue},${product.units}\n`;
       });
+    } else if (activeTab === 'summary') {
+      // Summary Report CSV
+      csvContent = `Daily/Monthly Summary Report - Generated on ${timestamp}\n\n`;
+      csvContent += `Period: ${summaryData.dateRangeText}\n\n`;
+      csvContent += `Summary\n`;
+      csvContent += `Total Sales,${summaryData.totalSales}\n`;
+      csvContent += `Total Revenue,₱${summaryData.totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n`;
+      csvContent += `Total VAT,₱${summaryData.totalVAT.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n`;
+      csvContent += `Items Sold,${summaryData.totalItems}\n`;
+      csvContent += `Top Product,${summaryData.topProduct}\n\n`;
+      
+      if (summaryDateRange === 'today' && summaryData.hourlyBreakdown.length > 0) {
+        csvContent += `Hourly Breakdown\n`;
+        csvContent += `Hour,Revenue\n`;
+        summaryData.hourlyBreakdown.forEach(item => {
+          csvContent += `${item.hour},₱${item.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n`;
+        });
+      } else if (summaryData.dailyBreakdown.length > 0) {
+        csvContent += `Daily Breakdown\n`;
+        csvContent += `Date,Revenue\n`;
+        summaryData.dailyBreakdown.forEach(item => {
+          csvContent += `${item.day},₱${item.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}\n`;
+        });
+      }
     }
 
     downloadFile(csvContent, `${activeTab}-report-${Date.now()}.csv`, 'text/csv');
@@ -452,6 +648,25 @@ const ReportsPage = () => {
       });
       htmlContent += `</tbody></table>`;
     } else if (activeTab === 'revenue') {
+      if (revenueStartDate && revenueEndDate) {
+        htmlContent += `
+        <div class="metrics">
+            <div class="metric-card">
+                <h3>Date Range</h3>
+                <div class="value" style="font-size: 16px;">${revenueData.dateRange}</div>
+            </div>
+            <div class="metric-card">
+                <h3>Total Revenue</h3>
+                <div class="value">₱${revenueData.totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
+                <small style="color: #64748b;">VAT: ₱${revenueData.vatAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</small>
+            </div>
+            <div class="metric-card">
+                <h3>Transactions</h3>
+                <div class="value">${revenueData.transactions}</div>
+            </div>
+        </div>
+`;
+      }
       htmlContent += `
         <h2>Top Selling Products by Revenue</h2>
         <table>
@@ -464,6 +679,59 @@ const ReportsPage = () => {
         htmlContent += `<tr><td><strong>#${product.rank}</strong></td><td>${product.name}</td><td>${product.category}</td><td><strong>${product.revenue}</strong></td><td>${product.units}</td></tr>`;
       });
       htmlContent += `</tbody></table>`;
+    } else if (activeTab === 'summary') {
+      htmlContent += `
+        <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #3b82f6;">
+            <h3 style="margin: 0; color: #1e293b;">Period: ${summaryData.dateRangeText}</h3>
+        </div>
+        <div class="metrics">
+            <div class="metric-card">
+                <h3>Total Sales</h3>
+                <div class="value">${summaryData.totalSales}</div>
+                <small style="color: #64748b;">Transactions</small>
+            </div>
+            <div class="metric-card">
+                <h3>Total Revenue</h3>
+                <div class="value">₱${summaryData.totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</div>
+                <small style="color: #64748b;">Inc. 12% VAT</small>
+            </div>
+            <div class="metric-card">
+                <h3>Items Sold</h3>
+                <div class="value">${summaryData.totalItems}</div>
+            </div>
+            <div class="metric-card">
+                <h3>Top Product</h3>
+                <div class="value" style="font-size: 18px;">${summaryData.topProduct}</div>
+            </div>
+        </div>
+`;
+      if (summaryDateRange === 'today' && summaryData.hourlyBreakdown.length > 0) {
+        htmlContent += `
+        <h2>Hourly Sales Breakdown</h2>
+        <table>
+            <thead>
+                <tr><th>Hour</th><th>Revenue</th></tr>
+            </thead>
+            <tbody>
+`;
+        summaryData.hourlyBreakdown.forEach(item => {
+          htmlContent += `<tr><td>${item.hour}</td><td>₱${item.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td></tr>`;
+        });
+        htmlContent += `</tbody></table>`;
+      } else if (summaryData.dailyBreakdown.length > 0) {
+        htmlContent += `
+        <h2>Daily Sales Breakdown</h2>
+        <table>
+            <thead>
+                <tr><th>Date</th><th>Revenue</th></tr>
+            </thead>
+            <tbody>
+`;
+        summaryData.dailyBreakdown.forEach(item => {
+          htmlContent += `<tr><td>${item.day}</td><td>₱${item.revenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</td></tr>`;
+        });
+        htmlContent += `</tbody></table>`;
+      }
     }
 
     htmlContent += `
@@ -508,7 +776,27 @@ const ReportsPage = () => {
       jsonData.categoryDistribution = categoryData;
       jsonData.inventoryStatus = products.length > 0 ? products : inventoryStatusData;
     } else if (activeTab === 'revenue') {
+      if (revenueStartDate && revenueEndDate) {
+        jsonData.dateRange = revenueData.dateRange;
+        jsonData.totalRevenue = revenueData.totalRevenue;
+        jsonData.vatAmount = revenueData.vatAmount;
+        jsonData.transactions = revenueData.transactions;
+      }
       jsonData.topProducts = topProducts;
+    } else if (activeTab === 'summary') {
+      jsonData.period = summaryData.dateRangeText;
+      jsonData.summary = {
+        totalSales: summaryData.totalSales,
+        totalRevenue: summaryData.totalRevenue,
+        totalVAT: summaryData.totalVAT,
+        totalItems: summaryData.totalItems,
+        topProduct: summaryData.topProduct,
+      };
+      if (summaryDateRange === 'today' && summaryData.hourlyBreakdown.length > 0) {
+        jsonData.hourlyBreakdown = summaryData.hourlyBreakdown;
+      } else if (summaryData.dailyBreakdown.length > 0) {
+        jsonData.dailyBreakdown = summaryData.dailyBreakdown;
+      }
     }
 
     downloadFile(JSON.stringify(jsonData, null, 2), `${activeTab}-report-${Date.now()}.json`, 'application/json');
@@ -808,6 +1096,72 @@ const ReportsPage = () => {
 
       {activeTab === 'revenue' && (
         <div>
+          {/* Revenue Report Header with Date Range Selector */}
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Revenue Report</h2>
+                <p className="text-gray-600">Presents total revenue generated within a selected date range</p>
+              </div>
+            </div>
+            
+            <div className="flex items-end space-x-4 mt-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                <input
+                  type="date"
+                  value={revenueStartDate}
+                  onChange={(e) => setRevenueStartDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                <input
+                  type="date"
+                  value={revenueEndDate}
+                  onChange={(e) => setRevenueEndDate(e.target.value)}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            {revenueStartDate && revenueEndDate && (
+              <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm font-medium text-gray-700">Date Range</span>
+                  </div>
+                  <p className="text-sm text-gray-600">{revenueData.dateRange}</p>
+                </div>
+                <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                    <span className="text-sm font-medium text-gray-700">Total Revenue</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">₱{revenueData.totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                  <p className="text-xs text-gray-600 mt-1">VAT: ₱{revenueData.vatAmount.toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                </div>
+                <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
+                  <div className="flex items-center space-x-2 mb-2">
+                    <ShoppingCart className="w-5 h-5 text-purple-600" />
+                    <span className="text-sm font-medium text-gray-700">Transactions</span>
+                  </div>
+                  <p className="text-2xl font-bold text-gray-800">{revenueData.transactions}</p>
+                  <p className="text-xs text-gray-600 mt-1">During period</p>
+                </div>
+              </div>
+            )}
+
+            {(!revenueStartDate || !revenueEndDate) && (
+              <div className="mt-4 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                <p className="text-sm text-yellow-800">📅 Please select both start and end dates to view revenue report</p>
+              </div>
+            )}
+          </div>
+
+          {/* Top Selling Products */}
           <div className="bg-white rounded-xl shadow-md overflow-hidden">
             <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
               <div>
@@ -856,6 +1210,197 @@ const ReportsPage = () => {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'summary' && (
+        <div>
+          {/* Date Range Selector */}
+          <div className="bg-white rounded-xl shadow-md p-6 mb-6">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-800 mb-2">Daily/Monthly Summary Report</h2>
+                <p className="text-gray-600">Compiled overview of sales activity for a day or month</p>
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-4 mt-4">
+              <button
+                onClick={() => setSummaryDateRange('today')}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  summaryDateRange === 'today'
+                    ? 'bg-primary-dark text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Today
+              </button>
+              <button
+                onClick={() => setSummaryDateRange('thisMonth')}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  summaryDateRange === 'thisMonth'
+                    ? 'bg-primary-dark text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                This Month
+              </button>
+              <button
+                onClick={() => setSummaryDateRange('lastMonth')}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  summaryDateRange === 'lastMonth'
+                    ? 'bg-primary-dark text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Last Month
+              </button>
+              <button
+                onClick={() => setSummaryDateRange('custom')}
+                className={`px-6 py-2 rounded-lg font-semibold transition-all ${
+                  summaryDateRange === 'custom'
+                    ? 'bg-primary-dark text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                Custom Range
+              </button>
+            </div>
+
+            {summaryDateRange === 'custom' && (
+              <div className="flex items-end space-x-4 mt-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">End Date</label>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-3 flex items-center space-x-2">
+              <Calendar className="w-5 h-5 text-blue-600" />
+              <span className="text-sm font-medium text-blue-900">{summaryData.dateRangeText}</span>
+            </div>
+          </div>
+
+          {/* Summary Metrics */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-white rounded-xl p-6 shadow-md">
+              <div className="flex items-center justify-between mb-4">
+                <ShoppingCart className="w-8 h-8 text-blue-600" />
+                {sales.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
+              </div>
+              <h3 className="text-sm font-medium text-gray-600 mb-1">Total Sales</h3>
+              <p className="text-3xl font-bold text-gray-800">{summaryData.totalSales}</p>
+              <p className="text-xs text-gray-500 mt-1">Transactions</p>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-md">
+              <div className="flex items-center justify-between mb-4">
+                <DollarSign className="w-8 h-8 text-green-600" />
+                {sales.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
+              </div>
+              <h3 className="text-sm font-medium text-gray-600 mb-1">Total Revenue</h3>
+              <p className="text-3xl font-bold text-gray-800">
+                ₱{summaryData.totalRevenue.toLocaleString('en-PH', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">Inc. 12% VAT</p>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-md">
+              <div className="flex items-center justify-between mb-4">
+                <Package className="w-8 h-8 text-purple-600" />
+                {sales.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
+              </div>
+              <h3 className="text-sm font-medium text-gray-600 mb-1">Items Sold</h3>
+              <p className="text-3xl font-bold text-gray-800">{summaryData.totalItems}</p>
+              <p className="text-xs text-gray-500 mt-1">Total quantity</p>
+            </div>
+
+            <div className="bg-white rounded-xl p-6 shadow-md">
+              <div className="flex items-center justify-between mb-4">
+                <TrendingUp className="w-8 h-8 text-amber-600" />
+                {sales.length > 0 && <span className="text-xs text-blue-600 font-semibold">LIVE DATA</span>}
+              </div>
+              <h3 className="text-sm font-medium text-gray-600 mb-1">Top Product</h3>
+              <p className="text-lg font-bold text-gray-800">{summaryData.topProduct}</p>
+              <p className="text-xs text-gray-500 mt-1">Best seller</p>
+            </div>
+          </div>
+
+          {/* Sales Breakdown Chart */}
+          {summaryDateRange === 'today' && summaryData.hourlyBreakdown.length > 0 && (
+            <div className="bg-white rounded-xl p-6 shadow-md mb-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-6">Hourly Sales Breakdown</h2>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={summaryData.hourlyBreakdown}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="hour" stroke="#6b7280" />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value) => [`₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`, 'Revenue']}
+                  />
+                  <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {(summaryDateRange === 'thisMonth' || summaryDateRange === 'lastMonth' || summaryDateRange === 'custom') && summaryData.dailyBreakdown.length > 0 && (
+            <div className="bg-white rounded-xl p-6 shadow-md mb-6">
+              <h2 className="text-xl font-bold text-gray-800 mb-6">Daily Sales Breakdown</h2>
+              <ResponsiveContainer width="100%" height={350}>
+                <BarChart data={summaryData.dailyBreakdown}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="day" stroke="#6b7280" angle={-45} textAnchor="end" height={80} />
+                  <YAxis stroke="#6b7280" />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: '#fff',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                    }}
+                    formatter={(value) => [`₱${value.toLocaleString('en-PH', { minimumFractionDigits: 2 })}`, 'Revenue']}
+                  />
+                  <Bar dataKey="revenue" fill="#10b981" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          )}
+
+          {sales.length === 0 && (
+            <div className="bg-white rounded-xl p-12 shadow-md text-center">
+              <BarChart3 className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">No Sales Data Available</h3>
+              <p className="text-gray-600">Start recording sales to see your daily and monthly summaries here</p>
+            </div>
+          )}
+
+          {sales.length > 0 && summaryData.totalSales === 0 && (
+            <div className="bg-white rounded-xl p-12 shadow-md text-center">
+              <Calendar className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+              <h3 className="text-xl font-bold text-gray-800 mb-2">No Sales in Selected Period</h3>
+              <p className="text-gray-600">Try selecting a different date range to view sales data</p>
+            </div>
+          )}
         </div>
       )}
     </div>
