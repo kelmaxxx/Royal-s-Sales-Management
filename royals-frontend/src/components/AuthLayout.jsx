@@ -27,8 +27,8 @@ const AuthLayout = ({ children, onLogout, currentUser }) => {
         {/* Logo */}
         <div className="p-6">
           <div className="flex items-center space-x-3">
-            <div className="bg-accent-gold p-2 rounded-lg">
-              <Crown className="w-6 h-6 text-primary-dark" />
+            <div className="bg-white p-2 rounded-lg">
+              <img src="/royals-logo.png" alt="Royal's Logo" className="w-6 h-6 object-contain" />
             </div>
             <div>
               <h1 className="font-bold text-lg">Royal's Sales</h1>

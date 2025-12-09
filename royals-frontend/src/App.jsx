@@ -1,5 +1,7 @@
 import React, { useState, createContext, useContext, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
 import Dashboard from './pages/Dashboard';
 import ProductsPage from './pages/ProductsPage';
@@ -93,37 +95,64 @@ function App() {
   return (
     <UserContext.Provider value={{ currentUser, isAuthenticated }}>
       <Router>
-        <Routes>
-          <Route 
-            path="/login" 
-            element={
-              isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage onLogin={handleLogin} />
-            } 
-          />
-          <Route
-            path="/*"
-            element={
-              isAuthenticated ? (
-                <AuthLayout onLogout={handleLogout} currentUser={currentUser}>
-                  <Routes>
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/products" element={<ProductsPage />} />
-                    <Route path="/sales" element={<SalesPage />} />
-                    <Route path="/reports" element={<ReportsPage />} />
-                    {currentUser?.role === 'Admin' && (
-                      <Route path="/users" element={<UsersPage />} />
-                    )}
-                    <Route path="/" element={<Navigate to="/dashboard" />} />
-                  </Routes>
-                </AuthLayout>
-              ) : (
-                <Navigate to="/login" />
-              )
-            }
-          />
-        </Routes>
+        <AnimatedRoutes 
+          isAuthenticated={isAuthenticated} 
+          handleLogin={handleLogin}
+          handleLogout={handleLogout}
+          currentUser={currentUser}
+        />
       </Router>
     </UserContext.Provider>
+  );
+}
+
+// Separate component to use useLocation hook
+function AnimatedRoutes({ isAuthenticated, handleLogin, handleLogout, currentUser }) {
+  const location = useLocation();
+  
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Landing Page - Public Route */}
+        <Route 
+          path="/" 
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" /> : <LandingPage />
+          } 
+        />
+        
+        {/* Login Page */}
+        <Route 
+          path="/login" 
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage onLogin={handleLogin} />
+          } 
+        />
+        
+        {/* Protected Routes */}
+        <Route
+          path="/*"
+          element={
+            isAuthenticated ? (
+              <AuthLayout onLogout={handleLogout} currentUser={currentUser}>
+                <Routes>
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/products" element={<ProductsPage />} />
+                  <Route path="/sales" element={<SalesPage />} />
+                  <Route path="/reports" element={<ReportsPage />} />
+                  {currentUser?.role === 'Admin' && (
+                    <Route path="/users" element={<UsersPage />} />
+                  )}
+                  <Route path="*" element={<Navigate to="/dashboard" />} />
+                </Routes>
+              </AuthLayout>
+            ) : (
+              <Navigate to="/" />
+            )
+          }
+        />
+      </Routes>
+    </AnimatePresence>
   );
 }
 

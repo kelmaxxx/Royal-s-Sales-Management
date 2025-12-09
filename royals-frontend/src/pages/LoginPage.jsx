@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Crown, Eye, EyeOff } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Crown, Eye, EyeOff, ArrowLeft } from 'lucide-react';
 
 const LoginPage = ({ onLogin }) => {
   const [username, setUsername] = useState('');
@@ -30,9 +31,32 @@ const LoginPage = ({ onLogin }) => {
   };
 
   return (
-    <div className="flex h-screen overflow-hidden">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.5 }}
+      className="flex h-screen overflow-hidden"
+    >
+      {/* Back to Home Button */}
+      <motion.button
+        initial={{ opacity: 0, x: -20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 0.3 }}
+        onClick={() => navigate('/')}
+        className="absolute top-6 left-6 z-50 flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-md text-white rounded-full hover:bg-white/20 transition-all duration-300 border border-white/20"
+      >
+        <ArrowLeft className="w-4 h-4" />
+        <span className="text-sm font-medium">Back to Home</span>
+      </motion.button>
+      
       {/* Left Side - Abstract Wave Design (55%) */}
-      <div className="w-[55%] bg-gradient-to-br from-primary-dark via-slate-800 to-slate-900 relative overflow-hidden flex items-center justify-center">
+      <motion.div 
+        initial={{ x: -100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.6, ease: [0.6, -0.05, 0.01, 0.99] }}
+        className="w-[55%] bg-gradient-to-br from-primary-dark via-slate-800 to-slate-900 relative overflow-hidden flex items-center justify-center"
+      >
         {/* Animated Abstract Waves */}
         <div className="absolute inset-0">
           {/* Wave 1 */}
@@ -89,11 +113,21 @@ const LoginPage = ({ onLogin }) => {
           <div className="absolute top-1/2 left-1/3 w-48 h-48 bg-yellow-300 opacity-10 rounded-full blur-2xl animate-pulse" style={{ animationDelay: '4s' }}></div>
         </div>
 {/* Content */}
-        <div className="relative z-10 text-center px-12 max-w-3xl mx-auto">
+        <motion.div 
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
+          className="relative z-10 text-center px-12 max-w-3xl mx-auto"
+        >
           {/* Logo / Icon */}
-          <div className="inline-flex items-center justify-center w-28 h-28 bg-accent-gold bg-opacity-90 backdrop-blur-lg rounded-3xl mb-8 shadow-2xl border border-accent-gold border-opacity-50">
-            <Crown className="w-16 h-16 text-primary-dark drop-shadow-lg" />
-          </div>
+          <motion.div 
+            initial={{ scale: 0, rotate: -180 }}
+            animate={{ scale: 1, rotate: 0 }}
+            transition={{ duration: 0.8, delay: 0.4, type: "spring" }}
+            className="inline-flex items-center justify-center w-40 h-40 mb-8"
+          >
+            <img src="/loginlogo.webp" alt="Royal's Logo" className="w-full h-full object-contain drop-shadow-2xl" />
+          </motion.div>
 
           {/* Headline */}
           <h1 className="text-5xl md:text-6xl font-bold text-white mb-4 drop-shadow-lg leading-tight">
@@ -114,17 +148,27 @@ const LoginPage = ({ onLogin }) => {
             A centralized platform for managing product listings, sales transactions, 
             and essential business reports.
           </p>
-        </div>
+        </motion.div>
 
         {/* Decorative Corner Elements */}
         <div className="absolute top-0 left-0 w-40 h-40 border-t-4 border-l-4 border-white opacity-20 rounded-tl-3xl"></div>
         <div className="absolute bottom-0 right-0 w-40 h-40 border-b-4 border-r-4 border-white opacity-20 rounded-br-3xl"></div>
-      </div>
+      </motion.div>
 
       {/* Right Side - Login Form (45%) */}
-      <div className="w-[45%] bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
+      <motion.div 
+        initial={{ x: 100, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        transition={{ duration: 0.6, delay: 0.2, ease: [0.6, -0.05, 0.01, 0.99] }}
+        className="w-[45%] bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center"
+      >
         <div className="w-full max-w-md px-8">
-          <div className="bg-white rounded-2xl shadow-2xl p-10 border border-gray-100">
+          <motion.div 
+            initial={{ y: 30, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="bg-white rounded-2xl shadow-2xl p-10 border border-gray-100"
+          >
             {/* Header */}
             <div className="text-center mb-8">
               <h2 className="text-4xl font-bold text-gray-800 mb-3">Sign In</h2>
@@ -205,10 +249,10 @@ const LoginPage = ({ onLogin }) => {
 
 
             </form>
-          </div>
+          </motion.div>
         </div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 };
 
