@@ -156,4 +156,5 @@ function AnimatedRoutes({ isAuthenticated, handleLogin, handleLogout, currentUse
   );
 }
 
+
 export default App;
