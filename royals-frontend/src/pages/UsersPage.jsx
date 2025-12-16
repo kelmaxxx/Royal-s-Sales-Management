@@ -89,7 +89,12 @@ const UsersPage = () => {
       setLoading(true);
       setError('');
       const data = await usersAPI.getAll();
-      setUsers(data);
+      // Map is_active to status for frontend
+      const usersWithStatus = data.map(user => ({
+        ...user,
+        status: user.is_active ? 'Active' : 'Inactive'
+      }));
+      setUsers(usersWithStatus);
     } catch (err) {
       console.error('Error fetching users:', err);
       setError('Failed to load users');
@@ -174,8 +179,14 @@ const UsersPage = () => {
       const userData = {
         name: formData.name,
         email: formData.email,
+        phone: formData.phone,
         role: formData.role,
       };
+
+      // Include is_active when editing
+      if (editingUser) {
+        userData.is_active = formData.status === 'Active' ? 1 : 0;
+      }
 
       if (formData.password) {
         userData.password = formData.password;
@@ -222,12 +233,33 @@ const UsersPage = () => {
     }
   };
 
-  const handleToggleStatus = (userId) => {
-    setUsers(users.map(u => 
-      u.id === userId 
-        ? { ...u, status: u.status === 'Active' ? 'Inactive' : 'Active' }
-        : u
-    ));
+  const handleToggleStatus = async (userId) => {
+    try {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+
+      const newStatus = user.status === 'Active' ? 'Inactive' : 'Active';
+      const is_active = newStatus === 'Active' ? 1 : 0;
+
+      // Update on backend
+      await usersAPI.update(userId, {
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        is_active: is_active
+      });
+
+      // Update local state
+      setUsers(users.map(u => 
+        u.id === userId 
+          ? { ...u, status: newStatus, is_active: is_active }
+          : u
+      ));
+    } catch (err) {
+      console.error('Error toggling user status:', err);
+      alert('Failed to update user status');
+    }
   };
 
   const filteredUsers = users.filter(
@@ -298,9 +330,9 @@ const UsersPage = () => {
           <div className="flex items-center justify-between mb-4">
             <Shield className="w-8 h-8 text-accent-gold" />
           </div>
-          <h3 className="text-sm font-medium text-gray-600 mb-1">Administrators</h3>
+          <h3 className="text-sm font-medium text-gray-600 mb-1">Total Staff</h3>
           <p className="text-3xl font-bold text-gray-800">
-            {users.filter((u) => u.role === 'Admin').length}
+            {users.filter((u) => u.role === 'Staff').length}
           </p>
         </div>
       </div>
@@ -359,7 +391,7 @@ const UsersPage = () => {
                       </div>
                       <div className="flex items-center space-x-2 text-sm text-gray-600">
                         <Phone className="w-4 h-4" />
-                        <span>{user.phone}</span>
+                        <span>{user.phone || 'No phone'}</span>
                       </div>
                     </div>
                   </td>
@@ -380,8 +412,14 @@ const UsersPage = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">
-                      Active
+                    <span
+                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                        user.status === 'Active'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}
+                    >
+                      {user.status}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-600">

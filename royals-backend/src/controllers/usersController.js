@@ -4,7 +4,7 @@ import db from '../config/database.js';
 export const getAllUsers = async (req, res) => {
   try {
     const [users] = await db.query(
-      'SELECT id, username, name, email, role, created_at FROM users ORDER BY created_at DESC'
+      'SELECT id, username, name, email, phone, role, is_active, created_at FROM users ORDER BY created_at DESC'
     );
     res.json(users);
   } catch (error) {
@@ -17,7 +17,7 @@ export const getUserById = async (req, res) => {
   try {
     const { id } = req.params;
     const [users] = await db.query(
-      'SELECT id, username, name, email, role, created_at FROM users WHERE id = ?',
+      'SELECT id, username, name, email, phone, role, is_active, created_at FROM users WHERE id = ?',
       [id]
     );
 
@@ -34,7 +34,7 @@ export const getUserById = async (req, res) => {
 
 export const createUser = async (req, res) => {
   try {
-    const { username, name, email, password, role } = req.body;
+    const { username, name, email, phone, password, role } = req.body;
 
     if (!username || !name || !email || !password) {
       return res.status(400).json({ message: 'All fields are required' });
@@ -54,12 +54,12 @@ export const createUser = async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const [result] = await db.query(
-      'INSERT INTO users (username, name, email, password, role) VALUES (?, ?, ?, ?, ?)',
-      [username, name, email, hashedPassword, role || 'Staff']
+      'INSERT INTO users (username, name, email, phone, password, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [username, name, email, phone || null, hashedPassword, role || 'Staff']
     );
 
     const [newUser] = await db.query(
-      'SELECT id, username, name, email, role, created_at FROM users WHERE id = ?',
+      'SELECT id, username, name, email, phone, role, is_active, created_at FROM users WHERE id = ?',
       [result.insertId]
     );
 
@@ -73,15 +73,21 @@ export const createUser = async (req, res) => {
 export const updateUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, email, role, password } = req.body;
+    const { name, email, phone, role, password, is_active } = req.body;
 
     const [existing] = await db.query('SELECT * FROM users WHERE id = ?', [id]);
     if (existing.length === 0) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    let updateQuery = 'UPDATE users SET name = ?, email = ?, role = ?';
-    let params = [name, email, role];
+    let updateQuery = 'UPDATE users SET name = ?, email = ?, phone = ?, role = ?';
+    let params = [name, email, phone || null, role];
+
+    // Update is_active if provided
+    if (is_active !== undefined) {
+      updateQuery += ', is_active = ?';
+      params.push(is_active);
+    }
 
     if (password) {
       const hashedPassword = await bcrypt.hash(password, 10);
@@ -95,7 +101,7 @@ export const updateUser = async (req, res) => {
     await db.query(updateQuery, params);
 
     const [updated] = await db.query(
-      'SELECT id, username, name, email, role, created_at FROM users WHERE id = ?',
+      'SELECT id, username, name, email, phone, role, is_active, created_at FROM users WHERE id = ?',
       [id]
     );
 

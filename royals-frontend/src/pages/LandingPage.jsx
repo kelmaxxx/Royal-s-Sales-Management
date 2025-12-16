@@ -415,12 +415,6 @@ const LandingPage = () => {
                   >
                     <button
                       onClick={() => navigate('/login')}
-                      className="px-8 py-4 bg-white text-slate-900 font-semibold rounded-full hover:bg-slate-100 transition-all duration-300 shadow-lg hover:shadow-xl"
-                    >
-                      Create Account
-                    </button>
-                    <button
-                      onClick={() => navigate('/login')}
                       className="px-8 py-4 border-2 border-white text-white font-semibold rounded-full hover:bg-white hover:text-slate-900 transition-all duration-300"
                     >
                       Sign In

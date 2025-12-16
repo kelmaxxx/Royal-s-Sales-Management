@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AnimatePresence } from 'framer-motion';
 import LandingPage from './pages/LandingPage';
 import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 import Dashboard from './pages/Dashboard';
 import ProductsPage from './pages/ProductsPage';
 import SalesPage from './pages/SalesPage';
@@ -128,6 +131,20 @@ function AnimatedRoutes({ isAuthenticated, handleLogin, handleLogout, currentUse
             isAuthenticated ? <Navigate to="/dashboard" /> : <LoginPage onLogin={handleLogin} />
           } 
         />
+
+        {/* Signup Page */}
+        <Route 
+          path="/signup" 
+          element={
+            isAuthenticated ? <Navigate to="/dashboard" /> : <SignupPage />
+          } 
+        />
+
+        {/* Email Verification Page */}
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
+
+        {/* OAuth Callback */}
+        <Route path="/auth/callback" element={<AuthCallbackPage />} />
         
         {/* Protected Routes */}
         <Route
