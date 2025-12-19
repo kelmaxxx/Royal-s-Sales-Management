@@ -48,6 +48,10 @@ export const createSale = async (req, res) => {
     await connection.beginTransaction();
 
     const { productId, quantity, recordedBy } = req.body;
+    
+    // Get the user who is creating this sale from the authenticated session
+    const createdByUserId = req.user?.id || null;
+    const createdByUserName = req.user?.name || null;
 
     if (!productId || !quantity || !recordedBy) {
       return res.status(400).json({ message: 'Product, quantity, and recorder are required' });
@@ -80,9 +84,9 @@ export const createSale = async (req, res) => {
     const vat = total * 0.12 / 1.12;
 
     const [saleResult] = await connection.query(
-      `INSERT INTO sales (product_id, product_name, quantity, total, vat, recorded_by) 
-       VALUES (?, ?, ?, ?, ?, ?)`,
-      [productId, product.name, quantity, total, vat, recordedBy]
+      `INSERT INTO sales (product_id, product_name, quantity, total, vat, recorded_by, created_by_user_id, created_by_user_name) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [productId, product.name, quantity, total, vat, recordedBy, createdByUserId, createdByUserName]
     );
 
     await connection.query(
@@ -96,6 +100,7 @@ export const createSale = async (req, res) => {
       `SELECT 
         s.id, s.product_id as productId, s.product_name as product,
         s.quantity, s.total, s.vat, s.recorded_by as recordedBy,
+        s.created_by_user_name as createdBy,
         DATE_FORMAT(s.created_at, '%b %d, %Y %h:%i %p') as date,
         s.created_at as timestamp
       FROM sales s WHERE s.id = ?`,

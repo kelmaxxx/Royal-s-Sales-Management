@@ -321,21 +321,38 @@ const SalesPage = () => {
                   )}
                 </div>
 
-                {/* Recorded By */}
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-2">
-                    Recorded By *
-                  </label>
-                  <select
-                    required
-                    value={formData.recordedBy}
-                    onChange={(e) => setFormData({ ...formData, recordedBy: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none transition"
-                  >
-                    <option value="Admin">Admin</option>
-                    <option value="Staff">Staff</option>
-                  </select>
-                </div>
+                {/* Recorded By - Only show for Admin */}
+                {currentUser?.role === 'Admin' ? (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Recorded By *
+                    </label>
+                    <select
+                      required
+                      value={formData.recordedBy}
+                      onChange={(e) => setFormData({ ...formData, recordedBy: e.target.value })}
+                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-accent-gold focus:border-transparent outline-none transition"
+                    >
+                      <option value="Admin">Admin</option>
+                      <option value="Staff">Staff</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Select who recorded this sale
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2">
+                      Recorded By
+                    </label>
+                    <div className="w-full px-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-700 font-medium">
+                      {currentUser?.name || 'Staff'}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      This sale will be recorded under your name
+                    </p>
+                  </div>
+                )}
 
                 {/* Total Preview */}
                 {formData.productId && formData.quantity && (
